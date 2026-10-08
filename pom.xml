@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.titanium</groupId>
+        <artifactId>titanium-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.titanium</groupId>
+    <artifactId>titanium-analytical-starter</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>titanium-analytical-starter</name>
+    <description>分析型取数 provider 端通用执行器（各业务域引入即具备 /api/v1/analytical 端点）</description>
+
+    <dependencies>
+        <!-- ========== 契约层：中立取数契约（AnalyticalContract/AnalyticalFilter/…）==========
+             🔴 依赖方向：业务域 → starter → titanium-metadata。
+             不得依赖 feature-center、不得依赖任何其它业务域（架构方案 §6.5 / I-2），
+             由 AnalyticalNoBusinessDomainDependencyTest 构建期守护。 -->
+        <dependency>
+            <groupId>com.titanium</groupId>
+            <artifactId>titanium-metadata</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- 自动装配（@AutoConfiguration/@ConditionalOnXxx） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- Web 注解（@RestController/@RequestMapping）——不引 starter-web，容器由宿主域提供 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+
+        <!-- 取数执行（JdbcTemplate）——只读分析查询，不引入 JPA/连接池实现 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+
+        <!-- 日志门面：本模块用 @Slf4j 记录启动期核验与执行失败。
+             🔴 scope=provided：实现由宿主域的日志 starter 提供（各域都带 spring-boot-starter-web/logging），
+             此处只声明编译期契约——若打成 compile 依赖，会给宿主域传递一份可能与它自己版本不同的门面。 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ========== 测试 ========== -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 集成测试需要真实 MVC 栈与 JSON 序列化（宿主域提供，本模块仅测试期使用） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 🔴 测试期必须有 Boot 的 JDBC 自动配置，否则没有 DataSource，整份装配判否：
+             本模块主代码只依赖 Spring Framework 的 spring-jdbc（只需要 JdbcTemplate 与 DataSource
+             这两个**类型**），而 `DataSourceAutoConfiguration` 与 `DataSourceInitializationAutoConfiguration`
+             在 Boot 4 里位于 spring-boot-jdbc 模块。宿主域由自己的 starter-data-jpa/starter-jdbc 提供
+             （引入 starter 的前提就是宿主域有数据源），故这里按宿主域的真实形态补上，
+             而不是让主代码去依赖它——starter 不应替宿主域决定数据源怎么配。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- H2：见 test 资源 application.yml，仅测试期 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- ========== 根规约 §7.1：非启动模块禁用 repackage ==========
+                 🔴 本模块是共享 Starter，被各业务域依赖；一旦 repackage 成可执行 jar，
+                 下游既拿不到可复用的类（Boot 布局把类挪进 BOOT-INF/classes），
+                 又会在全量构建时被 spring-boot-maven-plugin 以「找不到主类」中止。 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>repackage</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ========== 质量门禁激活（配置继承自 titanium-parent pluginManagement） ========== -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

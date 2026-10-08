@@ -1,0 +1,103 @@
+spring:
+  application:
+    name: titanium-analytical-starter-test
+  datasource:
+    url: jdbc:h2:mem:analytical-it;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+
+# ============================================================================================
+# 取数声明（titanium.analytical.*）——本文件同时是「零 Java 代码接入」的活样板：
+# 引入 starter 依赖后，把下面这段填进宿主域的 application.yml 即拥有两个端点。
+#
+# 🔴 YAML 是开发资产，不是运营配置（R-3）：它声明「哪个字段落在哪张表的哪一列」，
+#    改它走代码评审 + 发版。运营配置的是特征定义，不是取数映射。
+# ============================================================================================
+titanium:
+  analytical:
+    # 字段目录导入：none 表示不触碰任何目录表（本测试无需导入）
+    seed-mode: none
+    entities:
+
+      # 主测试实体：数值型删除标记列（is_deleted TINYINT）、非时效、不允许跨主体
+      policy:
+        table: v_analytical_policy
+        subject-column: policy_id
+        deleted-column: is_deleted
+        # 🔴 如实声明：本表是 CQRS 读模型，投影有可见延迟 ⇒ EVENTUAL
+        consistency: EVENTUAL
+
+        fields:
+          - code: policyId
+            column: policy_id
+            type: STRING
+            analyzable: true
+            groupable: true
+            filterable: true
+          - code: holderName
+            column: holder_name
+            type: STRING
+            analyzable: true
+            groupable: true
+            filterable: true
+          - code: premium
+            column: premium
+            type: DECIMAL
+            analyzable: true
+            aggregatable: true
+            filterable: true
+          - code: sumInsured
+            column: sum_insured
+            type: INTEGER
+            analyzable: true
+            aggregatable: true
+            filterable: true
+          - code: issueDate
+            column: issue_date
+            type: DATE
+            analyzable: true
+            filterable: true
+          - code: status
+            column: status
+            type: STRING
+            analyzable: true
+            filterable: true
+          # analyzable=false：用于验证「能力位未开放即拒绝」，而不是静默取到该列
+          - code: secretNote
+            column: secret_note
+            type: STRING
+
+      # 时效实体：半开区间 [effective_from, effective_to)，止列可空（开放区间）
+      endorsement:
+        table: v_analytical_endorsement
+        subject-column: policy_id
+        deleted-column: is_deleted
+        consistency: EVENTUAL
+        effective-from-column: effective_from
+        effective-to-column: effective_to
+        fields:
+          - code: fee
+            column: fee
+            type: DECIMAL
+            analyzable: true
+            aggregatable: true
+            filterable: true
+
+      # 布尔的删除标记列 + 允许跨主体聚合 + deleted-column: none 的对照组在单测中覆盖
+      free:
+        table: v_analytical_free
+        subject-column: policy_id
+        deleted-column: none
+        consistency: STRONG
+        allow-cross-subject: true
+        fields:
+          - code: amount
+            column: amount
+            type: DECIMAL
+            analyzable: true
+            aggregatable: true
