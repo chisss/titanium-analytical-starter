@@ -1,5 +1,7 @@
 package com.titanium.analytical;
 
+import com.titanium.metadata.enums.Reserved;
+
 /**
  * 属主域取数**实际达到的一致性等级**（provider 端声明，G08/g08-06）。
  *
@@ -21,6 +23,7 @@ package com.titanium.analytical;
 public enum AnalyticalConsistency {
 
     /** 强一致：读的是写模型当前状态（状态表 / 事件重建），不存在投影可见延迟。 */
+    @Reserved("2026-10-14 g16-05 零引用登记（未见消费）：待业务核对——接入触发链路或删除；核毕摘标注+删清单行。见 docs/技术文档/枚举零引用清单.md")
     STRONG,
 
     /** 最终一致：读的是 CQRS 读模型 / 投影表，存在可见延迟（本仓绝大多数分析视图属此类）。 */
